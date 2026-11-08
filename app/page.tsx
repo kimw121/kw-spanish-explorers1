@@ -3,753 +3,585 @@
 
 import { useEffect, useRef, useState } from "react";
 
-type Word = {
-  spanish: string;
-  english: string;
-  emoji: string;
-};
+type Screen = "garage" | "race" | "question" | "finish";
 
-type Place = {
-  id: string;
-  name: string;
-  spanish: string;
-  emoji: string;
-  description: string;
-  color: string;
-  words: Word[];
-};
-
-type Profile = {
+type Racer = {
   name: string;
   age: string;
   country: string;
-  city: string;
-  school: string;
-  birthday: string;
-  color: string;
-  animal: string;
-  food: string;
-  hobby: string;
-  feeling: string;
-  family: string;
-  dream: string;
+  car: number;
+  level: number;
+  xp: number;
 };
 
-const STORAGE = "kw-translations-spanish-explorers-v3";
-
-const INITIAL_PROFILE: Profile = {
-  name: "",
-  age: "",
-  country: "Jamaica",
-  city: "",
-  school: "",
-  birthday: "",
-  color: "azul",
-  animal: "el perro",
-  food: "la pizza",
-  hobby: "bailar",
-  feeling: "feliz",
-  family: "",
-  dream: "",
+type RoadItem = {
+  id: number;
+  lane: number;
+  z: number;
+  kind: "rival" | "star";
+  car: number;
+  passed: boolean;
 };
 
-const PLACES: Place[] = [
+type GameWorld = {
+  time: number;
+  lane: number;
+  visualLane: number;
+  road: number;
+  objects: RoadItem[];
+  nextId: number;
+  spawn: number;
+  score: number;
+  hearts: number;
+  boost: number;
+  nitro: number;
+  safe: number;
+  combo: number;
+};
+
+const CARS = [
   {
-    id: "village",
-    name: "Welcome Village",
-    spanish: "El pueblo",
-    emoji: "🏘️",
-    description: "Meet friends and introduce yourself",
-    color: "#ffcb83",
-    words: [
-      { spanish: "¡Hola!", english: "Hello!", emoji: "👋" },
-      { spanish: "Buenos días", english: "Good morning", emoji: "🌞" },
-      { spanish: "Buenas tardes", english: "Good afternoon", emoji: "🌤️" },
-      { spanish: "Buenas noches", english: "Good evening / night", emoji: "🌙" },
-      { spanish: "¿Cómo te llamas?", english: "What is your name?", emoji: "🪪" },
-      { spanish: "Me llamo...", english: "My name is...", emoji: "😊" },
-      { spanish: "¿Cuántos años tienes?", english: "How old are you?", emoji: "🎂" },
-      { spanish: "Tengo ocho años", english: "I am eight years old", emoji: "8️⃣" },
-      { spanish: "¿De dónde eres?", english: "Where are you from?", emoji: "🌎" },
-      { spanish: "Soy de Jamaica", english: "I am from Jamaica", emoji: "🇯🇲" },
-      { spanish: "¿Dónde vives?", english: "Where do you live?", emoji: "🏠" },
-      { spanish: "Vivo en...", english: "I live in...", emoji: "📍" },
-      { spanish: "¿Cómo estás?", english: "How are you?", emoji: "💬" },
-      { spanish: "Estoy feliz", english: "I am happy", emoji: "😄" },
-      { spanish: "Mucho gusto", english: "Nice to meet you", emoji: "🤝" },
-      { spanish: "Hasta luego", english: "See you later", emoji: "👋" },
-    ],
+    name: "Lamborghini Supercar",
+    type: "EXOTIC SPEED",
+    color: "#9ce44e",
+    image:
+      "https://images.unsplash.com/photo-1544829099-b9a0c07fad1a?auto=format&fit=crop&w=800&q=80",
   },
   {
-    id: "school",
-    name: "Wonder School",
-    spanish: "La escuela",
-    emoji: "🏫",
-    description: "Explore classrooms and school supplies",
-    color: "#a6d6ff",
-    words: [
-      { spanish: "la mochila", english: "the backpack", emoji: "🎒" },
-      { spanish: "el lápiz", english: "the pencil", emoji: "✏️" },
-      { spanish: "el libro", english: "the book", emoji: "📚" },
-      { spanish: "el cuaderno", english: "the notebook", emoji: "📓" },
-      { spanish: "la regla", english: "the ruler", emoji: "📏" },
-      { spanish: "la goma", english: "the eraser", emoji: "🧽" },
-      { spanish: "la silla", english: "the chair", emoji: "🪑" },
-      { spanish: "la mesa", english: "the table", emoji: "🪵" },
-      { spanish: "la escuela", english: "the school", emoji: "🏫" },
-      { spanish: "la maestra", english: "the female teacher", emoji: "👩🏽‍🏫" },
-    ],
+    name: "Porsche 911",
+    type: "RACE MACHINE",
+    color: "#facc15",
+    image:
+      "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80",
   },
   {
-    id: "market",
-    name: "Rainbow Market",
-    spanish: "El mercado",
-    emoji: "🍎",
-    description: "Discover food, fruit and colours",
-    color: "#ffc1d3",
-    words: [
-      { spanish: "la manzana", english: "the apple", emoji: "🍎" },
-      { spanish: "el plátano", english: "the banana", emoji: "🍌" },
-      { spanish: "la naranja", english: "the orange", emoji: "🍊" },
-      { spanish: "la fresa", english: "the strawberry", emoji: "🍓" },
-      { spanish: "el agua", english: "the water", emoji: "💧" },
-      { spanish: "rojo", english: "red", emoji: "🔴" },
-      { spanish: "azul", english: "blue", emoji: "🔵" },
-      { spanish: "verde", english: "green", emoji: "🟢" },
-      { spanish: "amarillo", english: "yellow", emoji: "🟡" },
-      { spanish: "morado", english: "purple", emoji: "🟣" },
-    ],
+    name: "Corvette",
+    type: "SUPER SPORT",
+    color: "#ef4444",
+    image:
+      "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=800&q=80",
   },
   {
-    id: "jungle",
-    name: "Animal Jungle",
-    spanish: "La selva",
-    emoji: "🦜",
-    description: "Meet animals in a tropical jungle",
-    color: "#a2e7b0",
-    words: [
-      { spanish: "el perro", english: "the dog", emoji: "🐶" },
-      { spanish: "el gato", english: "the cat", emoji: "🐱" },
-      { spanish: "el pájaro", english: "the bird", emoji: "🐦" },
-      { spanish: "el mono", english: "the monkey", emoji: "🐒" },
-      { spanish: "el pez", english: "the fish", emoji: "🐠" },
-      { spanish: "el caballo", english: "the horse", emoji: "🐴" },
-      { spanish: "la mariposa", english: "the butterfly", emoji: "🦋" },
-      { spanish: "el árbol", english: "the tree", emoji: "🌳" },
-    ],
+    name: "BMW Sport",
+    type: "STREET RACER",
+    color: "#38bdf8",
+    image:
+      "https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=800&q=80",
   },
   {
-    id: "clock",
-    name: "Clock Castle",
-    spanish: "El castillo",
-    emoji: "🏰",
-    description: "Learn to tell the time in Spanish",
-    color: "#d6b9fa",
-    words: [
-      { spanish: "¿Qué hora es?", english: "What time is it?", emoji: "🕒" },
-      { spanish: "Es la una", english: "It is one o'clock", emoji: "🕐" },
-      { spanish: "Son las dos", english: "It is two o'clock", emoji: "🕑" },
-      { spanish: "Son las tres", english: "It is three o'clock", emoji: "🕒" },
-      { spanish: "y cuarto", english: "quarter past", emoji: "⏱️" },
-      { spanish: "y media", english: "half past", emoji: "🕧" },
-      { spanish: "en punto", english: "on the hour", emoji: "⏰" },
-      { spanish: "de la mañana", english: "in the morning", emoji: "🌅" },
-    ],
+    name: "Muscle Car",
+    type: "RAW POWER",
+    color: "#fb923c",
+    image:
+      "https://images.unsplash.com/photo-1584345604476-8ec5e12e42dd?auto=format&fit=crop&w=800&q=80",
   },
   {
-    id: "family",
-    name: "Family Garden",
-    spanish: "El jardín",
-    emoji: "🏡",
-    description: "Learn family names and feelings",
-    color: "#ffe0a7",
-    words: [
-      { spanish: "la madre", english: "the mother", emoji: "👩🏽" },
-      { spanish: "el padre", english: "the father", emoji: "👨🏽" },
-      { spanish: "la hermana", english: "the sister", emoji: "👧🏽" },
-      { spanish: "el hermano", english: "the brother", emoji: "👦🏽" },
-      { spanish: "la abuela", english: "the grandmother", emoji: "👵🏽" },
-      { spanish: "el abuelo", english: "the grandfather", emoji: "👴🏽" },
-      { spanish: "Estoy feliz", english: "I am happy", emoji: "😄" },
-      { spanish: "Estoy cansado", english: "I am tired", emoji: "😴" },
-    ],
+    name: "Mercedes Sports",
+    type: "LUXURY SPEED",
+    color: "#a78bfa",
+    image:
+      "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    name: "City Racer",
+    type: "TURBO COMPACT",
+    color: "#2dd4bf",
+    image:
+      "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    name: "Grave Digger",
+    type: "MONSTER TRUCK",
+    color: "#b084ff",
+    image:
+      "https://upload.wikimedia.org/wikipedia/commons/8/87/Monster_Jam_Brazil_%28246352017%29.jpeg",
   },
 ];
 
-const COLORS = ["azul", "rojo", "verde", "amarillo", "morado", "rosado", "negro", "blanco"];
-const ANIMALS = ["el perro", "el gato", "el pájaro", "el caballo", "el mono", "el pez"];
-const FOODS = ["la pizza", "el arroz", "el pollo", "la pasta", "la fruta", "el helado"];
-const HOBBIES = ["bailar", "cantar", "leer", "dibujar", "nadar", "jugar", "correr"];
-const FEELINGS = ["feliz", "triste", "emocionado", "emocionada", "cansado", "cansada", "bien"];
+const AGE_WORDS: Record<string, string> = {
+  "7": "siete",
+  "8": "ocho",
+  "9": "nueve",
+  "10": "diez",
+  "11": "once",
+  "12": "doce",
+};
+
+const MISSIONS = [
+  {
+    spanish: "¡Hola!",
+    english: "How do you say hello?",
+    answers: ["¡Hola!", "Adiós", "Gracias"],
+    correct: 0,
+  },
+  {
+    spanish: "¿Cómo te llamas?",
+    english: "What is your name?",
+    answers: ["Tengo ocho años", "Me llamo...", "Estoy bien"],
+    correct: 1,
+  },
+  {
+    spanish: "¿Cuántos años tienes?",
+    english: "How old are you?",
+    answers: ["Soy de...", "Estoy bien", "Tengo ... años"],
+    correct: 2,
+  },
+  {
+    spanish: "¿De dónde eres?",
+    english: "Where are you from?",
+    answers: ["Soy de...", "Me llamo...", "Tengo..."],
+    correct: 0,
+  },
+  {
+    spanish: "¿Cómo estás?",
+    english: "How are you?",
+    answers: ["Tengo nueve años", "Estoy bien", "Me llamo..."],
+    correct: 1,
+  },
+  {
+    spanish: "¡Mucho gusto!",
+    english: "What does this mean?",
+    answers: ["Goodbye", "Good morning", "Nice to meet you"],
+    correct: 2,
+  },
+];
+
+const INITIAL: Racer[] = [
+  {
+    name: "Racer 1",
+    age: "8",
+    country: "Jamaica",
+    car: 0,
+    level: 0,
+    xp: 0,
+  },
+  {
+    name: "Racer 2",
+    age: "9",
+    country: "Jamaica",
+    car: 7,
+    level: 0,
+    xp: 0,
+  },
+];
+
+const RACE_LENGTH = 18;
+const STORAGE_KEY = "kw-turbo-racers-v1";
+
+function newWorld(): GameWorld {
+  return {
+    time: 0,
+    lane: 1,
+    visualLane: 1,
+    road: 0,
+    objects: [],
+    nextId: 0,
+    spawn: 0,
+    score: 0,
+    hearts: 3,
+    boost: 0,
+    nitro: 100,
+    safe: 0,
+    combo: 0,
+  };
+}
 
 function speak(text: string) {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
+  if (typeof window === "undefined" || !window.speechSynthesis) {
+    return;
+  }
 
   window.speechSynthesis.cancel();
 
-  const speech = new SpeechSynthesisUtterance(text);
-  speech.lang = "es-ES";
-  speech.rate = 0.78;
-  speech.pitch = 1.05;
+  const voice = new SpeechSynthesisUtterance(text);
+  voice.lang = "es-ES";
+  voice.rate = 0.78;
 
-  const voices = window.speechSynthesis.getVoices();
-  const spanishVoice = voices.find((voice) => voice.lang.toLowerCase().startsWith("es"));
+  const spanishVoice = window.speechSynthesis
+    .getVoices()
+    .find((v) => v.lang.toLowerCase().startsWith("es"));
 
-  if (spanishVoice) speech.voice = spanishVoice;
+  if (spanishVoice) voice.voice = spanishVoice;
 
-  window.speechSynthesis.speak(speech);
+  window.speechSynthesis.speak(voice);
 }
 
-function shuffle<T,>(items: T[]): T[] {
-  const copy = [...items];
-
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-
-  return copy;
+function sentence(player: Racer, level: number) {
+  if (level === 0) return "¡Hola!";
+  if (level === 1) return `Me llamo ${player.name}.`;
+  if (level === 2)
+    return `Tengo ${AGE_WORDS[player.age] || player.age} años.`;
+  if (level === 3) return `Soy de ${player.country}.`;
+  if (level === 4) return "Estoy bien.";
+  return "¡Mucho gusto!";
 }
 
-function clean(value: string) {
-  return value.trim().replace(/[.!?]+$/g, "");
-}
-
-function createIntroduction(profile: Profile) {
-  const name = clean(profile.name) || "Alex";
-  const city = clean(profile.city) || "Montego Bay";
-  const country = clean(profile.country) || "Jamaica";
-
-  const sentences = [
-    "¡Hola!",
-    `Me llamo ${name}.`,
-    profile.age ? `Tengo ${clean(profile.age)} años.` : "Tengo ocho años.",
-    `Soy de ${country}.`,
-    `Vivo en ${city}.`,
-    profile.school ? `Estudio en ${clean(profile.school)}.` : "Soy estudiante.",
-    `Mi color favorito es ${profile.color}.`,
-    `Mi animal favorito es ${profile.animal}.`,
-    `Mi comida favorita es ${profile.food}.`,
-    `Me gusta ${profile.hobby}.`,
-    `Hoy estoy ${profile.feeling}.`,
-  ];
-
-  if (profile.birthday) {
-    sentences.push(`Mi cumpleaños es el ${clean(profile.birthday)}.`);
-  }
-
-  if (profile.family) {
-    sentences.push(`En mi familia hay ${clean(profile.family)}.`);
-  }
-
-  if (profile.dream) {
-    sentences.push(`Quiero ser ${clean(profile.dream)}.`);
-  }
-
-  sentences.push("¡Mucho gusto!");
-  sentences.push("¿Y tú? ¿Cómo te llamas?");
-
-  return sentences;
-}
-
-function WorldArt() {
+function fullIntro(player: Racer) {
   return (
-    <div className="world-scene" aria-label="A colourful three-dimensional storybook village">
-      <div className="sun" />
-      <div className="cloud cloud-one" />
-      <div className="cloud cloud-two" />
+    `¡Hola! Me llamo ${player.name}. ` +
+    `Tengo ${AGE_WORDS[player.age] || player.age} años. ` +
+    `Soy de ${player.country}. ` +
+    "Estoy bien. ¡Mucho gusto!"
+  );
+}
 
-      <div className="mountain mountain-one" />
-      <div className="mountain mountain-two" />
-      <div className="mountain mountain-three" />
+function laneX(lane: number, z: number) {
+  const width = 165 + z * 665;
+  return 480 + (lane - 1) * width / 3;
+}
 
-      <div className="hill hill-back" />
-      <div className="hill hill-front" />
+function drawCar(
+  ctx: CanvasRenderingContext2D,
+  image: HTMLImageElement | undefined,
+  x: number,
+  y: number,
+  width: number,
+  color: string,
+  label: string,
+  player = false
+) {
+  const height = width * 0.84;
 
-      <div className="world-path" />
+  ctx.save();
 
-      <div className="tree tree-one">
-        <div className="tree-top" />
-        <div className="tree-trunk" />
-      </div>
+  ctx.shadowColor = player ? "#4ae9ff" : "#050914";
+  ctx.shadowBlur = player ? 20 : 10;
 
-      <div className="tree tree-two">
-        <div className="tree-top" />
-        <div className="tree-trunk" />
-      </div>
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.roundRect(
+    x - width / 2,
+    y - height / 2,
+    width,
+    height,
+    12
+  );
+  ctx.fill();
+  ctx.clip();
 
-      <div className="tree tree-three">
-        <div className="tree-top" />
-        <div className="tree-trunk" />
-      </div>
+  if (image?.complete && image.naturalWidth > 0) {
+    const ratio = Math.max(
+      width / image.naturalWidth,
+      height / image.naturalHeight
+    );
 
-      <div className="building building-one">
-        <div className="building-roof" />
-        <div className="building-wall">
-          <div className="building-window" />
-          <div className="building-door" />
+    const iw = image.naturalWidth * ratio;
+    const ih = image.naturalHeight * ratio;
+
+    ctx.drawImage(
+      image,
+      x - iw / 2,
+      y - ih / 2,
+      iw,
+      ih
+    );
+  } else {
+    ctx.fillStyle = color;
+    ctx.fillRect(
+      x - width / 2,
+      y - height / 2,
+      width,
+      height
+    );
+  }
+
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "rgba(4,9,20,.83)";
+  ctx.fillRect(
+    x - width / 2,
+    y + height * 0.21,
+    width,
+    height * 0.29
+  );
+
+  ctx.fillStyle = "white";
+  ctx.textAlign = "center";
+  ctx.font = `900 ${Math.max(10, width * 0.12)}px Arial`;
+  ctx.fillText(label, x, y + height * 0.41);
+
+  ctx.restore();
+}
+
+function drawScene(
+  ctx: CanvasRenderingContext2D,
+  world: GameWorld,
+  cars: HTMLImageElement[],
+  racer: Racer
+) {
+  const W = 960;
+  const H = 540;
+
+  // Sunset sky
+  const sky = ctx.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, "#111b49");
+  sky.addColorStop(0.42, "#6b4c96");
+  sky.addColorStop(0.7, "#ee9475");
+  sky.addColorStop(1, "#17283d");
+
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = "#ffe1a4";
+  ctx.beginPath();
+  ctx.arc(735, 76, 42, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Skyline
+  for (let i = 0; i < 34; i++) {
+    const bh = 39 + (i * 43) % 94;
+    ctx.fillStyle = i % 2 ? "#242c4e" : "#36375e";
+    ctx.fillRect(i * 31, 150 - bh, 27, bh);
+
+    if (i % 3 === 0) {
+      ctx.fillStyle = "#f8ce83";
+      ctx.fillRect(i * 31 + 8, 146 - bh + 17, 4, 5);
+    }
+  }
+
+  // Road
+  ctx.fillStyle = "#17303d";
+  ctx.fillRect(0, 105, W, H - 105);
+
+  ctx.beginPath();
+  ctx.moveTo(395, 105);
+  ctx.lineTo(565, 105);
+  ctx.lineTo(900, 540);
+  ctx.lineTo(60, 540);
+  ctx.closePath();
+
+  const road = ctx.createLinearGradient(0, 105, 0, 540);
+  road.addColorStop(0, "#4a5063");
+  road.addColorStop(1, "#121a28");
+  ctx.fillStyle = road;
+  ctx.fill();
+
+  // Glowing road sides
+  ctx.strokeStyle = "#ff5cab";
+  ctx.lineWidth = 6;
+
+  ctx.beginPath();
+  ctx.moveTo(395, 105);
+  ctx.lineTo(60, 540);
+  ctx.moveTo(565, 105);
+  ctx.lineTo(900, 540);
+  ctx.stroke();
+
+  // Animated lane markings
+  for (const divider of [1, 2]) {
+    for (let i = 0; i < 13; i++) {
+      const t = (i / 13 + world.road) % 1;
+      const t2 = Math.min(1, t + 0.045);
+
+      const y1 = 105 + t * t * 435;
+      const y2 = 105 + t2 * t2 * 435;
+
+      const x1 =
+        480 + (divider / 3 - 0.5) * (170 + t * t * 660);
+
+      const x2 =
+        480 + (divider / 3 - 0.5) * (170 + t2 * t2 * 660);
+
+      ctx.strokeStyle = "#fff5d7";
+      ctx.lineWidth = 2 + t * 7;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+  }
+
+  // Roadside lights
+  for (let i = 0; i < 10; i++) {
+    const t = (i / 10 + world.road * 0.7) % 1;
+    const y = 105 + t * t * 435;
+    const offset = 100 + t * 340;
+
+    for (const side of [-1, 1]) {
+      const x = 480 + side * offset;
+
+      ctx.strokeStyle = "#49dcff";
+      ctx.lineWidth = 2 + t * 3;
+
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, y - 13 - t * 60);
+      ctx.stroke();
+
+      ctx.fillStyle = "#ffdf83";
+      ctx.beginPath();
+      ctx.arc(x, y - 13 - t * 60, 3 + t * 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Moving traffic and collectibles
+  for (const item of world.objects) {
+    if (item.z < 0 || item.z > 1.1) continue;
+
+    const z = Math.min(1, item.z);
+    const y = 112 + z * 390;
+    const x = laneX(item.lane, z);
+
+    if (item.kind === "star") {
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.font = `${18 + z * 42}px Arial`;
+      ctx.shadowColor = "#ffe067";
+      ctx.shadowBlur = 16;
+      ctx.fillText("⭐", x, y);
+      ctx.restore();
+    } else {
+      drawCar(
+        ctx,
+        cars[item.car],
+        x,
+        y,
+        24 + z * 98,
+        CARS[item.car].color,
+        "RIVAL"
+      );
+    }
+  }
+
+  const px = laneX(world.visualLane, 1);
+
+  // Nitro flame
+  if (world.boost > 0) {
+    ctx.save();
+    ctx.fillStyle = "#43e9ff";
+    ctx.shadowColor = "#43e9ff";
+    ctx.shadowBlur = 28;
+
+    ctx.fillRect(px - 37, 493, 16, 55);
+    ctx.fillRect(px + 21, 493, 16, 55);
+
+    ctx.restore();
+  }
+
+  // Player car
+  if (
+    world.safe <= 0 ||
+    Math.floor(world.time * 10) % 2 === 0
+  ) {
+    drawCar(
+      ctx,
+      cars[racer.car],
+      px,
+      420,
+      racer.car === 7 ? 150 : 135,
+      CARS[racer.car].color,
+      "YOU",
+      true
+    );
+  }
+
+  // HUD
+  ctx.fillStyle = "rgba(5,12,26,.85)";
+  ctx.beginPath();
+  ctx.roundRect(15, 15, 270, 65, 12);
+  ctx.fill();
+
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#ffe178";
+  ctx.font = "900 20px Arial";
+  ctx.fillText("KW TURBO RACERS", 28, 43);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 13px Arial";
+  ctx.fillText(
+    world.boost > 0
+      ? "⚡ NITRO ACTIVE!"
+      : "DODGE • COLLECT • WIN",
+    28,
+    65
+  );
+
+  ctx.textAlign = "right";
+  ctx.font = "900 25px Arial";
+
+  ctx.fillText(
+    `${Math.max(0, Math.ceil(RACE_LENGTH - world.time))} SEC`,
+    940,
+    42
+  );
+
+  // Final checkpoint coming up
+  if (world.time >= RACE_LENGTH - 4) {
+    ctx.fillStyle = "#ffe078";
+    ctx.textAlign = "center";
+    ctx.font = "900 24px Arial";
+    ctx.fillText("🚧 SPANISH GATE AHEAD!", 480, 135);
+  }
+}
+
+function CarPhoto({
+  index,
+  selected = false,
+}: {
+  index: number;
+  selected?: boolean;
+}) {
+  const car = CARS[index];
+  const [failed, setFailed] = useState(false);
+
+  return (
+    <div className="car-photo">
+      {failed ? (
+        <div className="photo-fallback">
+          <span>{index === 7 ? "🚛" : "🏎️"}</span>
+          <strong>{car.name}</strong>
         </div>
-      </div>
+      ) : (
+        <img
+          src={car.image}
+          alt={car.name}
+          loading="lazy"
+          onError={() => setFailed(true)}
+        />
+      )}
 
-      <div className="building building-two">
-        <div className="building-roof" />
-        <div className="building-wall">
-          <div className="building-window" />
-          <div className="building-door" />
-        </div>
-      </div>
-
-      <div className="building building-three">
-        <div className="building-roof" />
-        <div className="building-wall">
-          <div className="building-window" />
-          <div className="building-door" />
-        </div>
-      </div>
-
-      <span className="world-flower flower-one">🌼</span>
-      <span className="world-flower flower-two">🌸</span>
-      <span className="world-flower flower-three">🌺</span>
-      <span className="world-bird">🦋</span>
+      {selected && <span className="selected-tag">✓ SELECTED</span>}
     </div>
   );
 }
 
-function IntroductionStudio({
-  profile,
-  onChange,
-  earn,
-}: {
-  profile: Profile;
-  onChange: (profile: Profile) => void;
-  earn: (key: string, points: number) => void;
-}) {
-  const [writing, setWriting] = useState("");
-  const [heard, setHeard] = useState("");
-  const [notice, setNotice] = useState("");
-  const [listening, setListening] = useState(false);
-
-  const recognitionRef = useRef<any>(null);
-  const sentences = createIntroduction(profile);
-  const paragraph = sentences.join(" ");
-
-  function update(key: keyof Profile, value: string) {
-    onChange({ ...profile, [key]: value });
-  }
-
-  function input(label: string, key: keyof Profile, placeholder: string) {
-    return (
-      <label className="input-group">
-        <span>{label}</span>
-        <input
-          value={profile[key]}
-          placeholder={placeholder}
-          maxLength={70}
-          onChange={(event) => update(key, event.target.value)}
-        />
-      </label>
-    );
-  }
-
-  function dropdown(label: string, key: keyof Profile, options: string[]) {
-    return (
-      <label className="input-group">
-        <span>{label}</span>
-        <select value={profile[key]} onChange={(event) => update(key, event.target.value)}>
-          {options.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </label>
-    );
-  }
-
-  function checkWriting() {
-    const words = writing.trim().split(/\s+/).filter(Boolean);
-    const punctuation = (writing.match(/[.!?]/g) || []).length;
-
-    if (words.length < 20 || punctuation < 3) {
-      setNotice("Keep going! Write at least 20 words and three complete sentences.");
-      return;
-    }
-
-    earn("intro-writing", 40);
-    setNotice("¡Muy bien! Writing mission completed. Ask your teacher to check your Spanish.");
-  }
-
-  function startSpeaking() {
-    if (typeof window === "undefined") return;
-
-    const browser = window as any;
-    const Recognition = browser.SpeechRecognition || browser.webkitSpeechRecognition;
-
-    if (!Recognition) {
-      setNotice("Your browser does not support voice recognition. Listen to the model and repeat aloud instead.");
-      return;
-    }
-
-    try {
-      recognitionRef.current?.stop();
-
-      const recognition = new Recognition();
-      recognitionRef.current = recognition;
-      recognition.lang = "es-ES";
-      recognition.continuous = false;
-      recognition.interimResults = false;
-
-      recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setHeard(transcript);
-        setNotice("Great speaking practice! Compare the words recognised with your model.");
-        earn("intro-speaking", 30);
-      };
-
-      recognition.onerror = () => {
-        setNotice("The microphone could not hear clearly. Try again or repeat after the audio.");
-        setListening(false);
-      };
-
-      recognition.onend = () => setListening(false);
-
-      recognition.start();
-      setListening(true);
-      setNotice("Speak clearly in Spanish!");
-    } catch {
-      setListening(false);
-      setNotice("The microphone could not start. You can still practise aloud.");
-    }
-  }
-
-  const questions = [
-    ["¿Cómo te llamas?", "What is your name?"],
-    ["¿Cuántos años tienes?", "How old are you?"],
-    ["¿De dónde eres?", "Where are you from?"],
-    ["¿Dónde vives?", "Where do you live?"],
-    ["¿Cuál es tu color favorito?", "What is your favourite colour?"],
-    ["¿Cuál es tu comida favorita?", "What is your favourite food?"],
-    ["¿Qué te gusta hacer?", "What do you enjoy doing?"],
-    ["¿Cómo estás hoy?", "How are you today?"],
-    ["¿Cuándo es tu cumpleaños?", "When is your birthday?"],
-    ["¿Qué quieres ser?", "What do you want to be?"],
-  ];
-
-  return (
-    <section className="intro-studio">
-      <div className="section-heading">
-        <span>YOUR SPANISH ADVENTURE BEGINS HERE</span>
-        <h2>🗣️ My Spanish Introduction Studio</h2>
-        <p>
-          Meet new friends, learn how to describe yourself, create your own Spanish speech,
-          and practise reading, writing, listening and speaking.
-        </p>
-      </div>
-
-      <div className="conversation">
-        <div className="conversation-line">
-          <span className="conversation-person">👧🏽</span>
-          <button onClick={() => speak("¡Hola! ¿Cómo te llamas? ¿De dónde eres? ¿Qué te gusta hacer?")}>
-            ¡Hola! ¿Cómo te llamas? ¿De dónde eres? ¿Qué te gusta hacer? 🔊
-          </button>
-        </div>
-
-        <div className="conversation-line reply">
-          <button onClick={() => speak(paragraph)}>
-            ¡Hola! Me llamo {profile.name || "Alex"}. ¡Mucho gusto! 🔊
-          </button>
-          <span className="conversation-person">👦🏽</span>
-        </div>
-      </div>
-
-      <div className="two-columns">
-        <article className="panel">
-          <h3>✏️ Step 1: All About Me</h3>
-          <p>Fill in your details to create your very own Spanish introduction.</p>
-
-          <div className="form-grid">
-            {input("My name", "name", "María")}
-            {input("My age", "age", "8")}
-            {input("My country", "country", "Jamaica")}
-            {input("My city", "city", "Montego Bay")}
-            {input("My school", "school", "Name of my school")}
-            {input("My birthday — in Spanish", "birthday", "15 de mayo")}
-
-            {dropdown("My favourite colour", "color", COLORS)}
-            {dropdown("My favourite animal", "animal", ANIMALS)}
-            {dropdown("My favourite food", "food", FOODS)}
-            {dropdown("My hobby", "hobby", HOBBIES)}
-            {dropdown("How I feel today", "feeling", FEELINGS)}
-
-            {input("My family — people", "family", "mi madre y mi hermano")}
-            {input("What I want to be", "dream", "médico / médica")}
-          </div>
-
-          <button
-            className="btn primary"
-            onClick={() => {
-              speak(paragraph);
-              earn("intro-created", 30);
-            }}
-          >
-            ✨ Build and Hear My Speech
-          </button>
-        </article>
-
-        <article className="panel introduction-paper">
-          <h3>📖 Step 2: My Spanish Speech</h3>
-          <p>Your information becomes complete Spanish sentences!</p>
-
-          {sentences.map((sentence, index) => (
-            <div className="sentence" key={index}>
-              <span className="sentence-number">{index + 1}</span>
-              <strong>{sentence}</strong>
-              <button
-                aria-label={`Listen to sentence ${index + 1}`}
-                onClick={() => {
-                  speak(sentence);
-                  earn(`intro-sentence-${index}`, 3);
-                }}
-              >
-                🔊
-              </button>
-            </div>
-          ))}
-
-          <div className="button-row">
-            <button
-              className="btn primary"
-              onClick={() => {
-                speak(paragraph);
-                earn("intro-full-listen", 15);
-              }}
-            >
-              🔊 Listen to Everything
-            </button>
-
-            <button
-              className="btn secondary"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(paragraph);
-                  setNotice("Your Spanish introduction has been copied!");
-                } catch {
-                  setNotice("Please select the text and copy it manually.");
-                }
-              }}
-            >
-              📋 Copy My Speech
-            </button>
-          </div>
-        </article>
-      </div>
-
-      <div className="two-columns">
-        <article className="panel">
-          <h3>📝 Step 3: My Writing Challenge</h3>
-          <p>
-            Now write your introduction without looking at the example.
-            Try to include your name, age, country, home, likes and favourite things.
-          </p>
-
-          <textarea
-            rows={9}
-            value={writing}
-            onChange={(event) => setWriting(event.target.value)}
-            placeholder={
-              "¡Hola!\nMe llamo...\nTengo ... años.\nSoy de...\nVivo en...\nMe gusta...\nMi color favorito es..."
-            }
-          />
-
-          <p className="helper">
-            Writing practice is checked for length, not grammar accuracy. Your teacher can help you correct it.
-          </p>
-
-          <button className="btn primary" onClick={checkWriting}>
-            ✅ Complete Writing Challenge
-          </button>
-        </article>
-
-        <article className="panel speaking-panel">
-          <h3>🎤 Step 4: My Speaking Challenge</h3>
-          <p>Listen first, then say your Spanish introduction aloud.</p>
-
-          <div className="microphone-art">🎙️</div>
-
-          <div className="button-row">
-            <button className="btn secondary" onClick={() => speak(paragraph)}>
-              🔊 Listen First
-            </button>
-
-            <button className="btn primary" disabled={listening} onClick={startSpeaking}>
-              {listening ? "🎤 Listening..." : "🎤 Start Speaking"}
-            </button>
-          </div>
-
-          {heard && (
-            <div className="feedback">
-              <strong>What the microphone heard:</strong>
-              <p>{heard}</p>
-            </div>
-          )}
-
-          <p className="helper">
-            Microphone recognition depends on the browser and permissions. It is a practice tool,
-            not a reliable pronunciation grade.
-          </p>
-        </article>
-      </div>
-
-      {notice && <div className="feedback" role="status">{notice}</div>}
-
-      <div className="question-garden">
-        <h3>🌟 Step 5: Let's Have a Conversation!</h3>
-        <p>Click any question to hear it in Spanish. Then answer out loud!</p>
-
-        <div className="question-grid">
-          {questions.map(([spanish, english]) => (
-            <button key={spanish} onClick={() => speak(spanish)}>
-              <strong>{spanish} 🔊</strong>
-              <small>{english}</small>
-            </button>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function ClockPractice({
-  earn,
-}: {
-  earn: (key: string, points: number) => void;
-}) {
-  const [hour, setHour] = useState(3);
-  const [minute, setMinute] = useState(30);
-  const [show, setShow] = useState(false);
-
-  const names = ["doce", "una", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez", "once"];
-
-  const timeSentence = `${
-    hour === 1 ? "Es la una" : `Son las ${names[hour % 12]}`
-  }${
-    minute === 0 ? " en punto" : minute === 15 ? " y cuarto" : " y media"
-  }.`;
-
-  function newTime() {
-    setHour(Math.floor(Math.random() * 12) + 1);
-    setMinute([0, 15, 30][Math.floor(Math.random() * 3)]);
-    setShow(false);
-  }
-
-  return (
-    <div className="panel clock-panel">
-      <h2>🕰️ The Magical Clock</h2>
-      <p>Look at the hands, then reveal the Spanish time!</p>
-
-      <div className="clock-face">
-        {Array.from({ length: 12 }, (_, index) => {
-          const number = index === 0 ? 12 : index;
-          const angle = ((number * 30 - 90) * Math.PI) / 180;
-
-          return (
-            <span
-              className="clock-number"
-              key={number}
-              style={{
-                left: `${50 + 39 * Math.cos(angle)}%`,
-                top: `${50 + 39 * Math.sin(angle)}%`,
-              }}
-            >
-              {number}
-            </span>
-          );
-        })}
-
-        <div
-          className="clock-hand hour-hand"
-          style={{ transform: `rotate(${hour * 30 + minute * 0.5}deg)` }}
-        />
-
-        <div
-          className="clock-hand minute-hand"
-          style={{ transform: `rotate(${minute * 6}deg)` }}
-        />
-
-        <div className="clock-centre" />
-      </div>
-
-      <h2>{hour}:{String(minute).padStart(2, "0")}</h2>
-
-      <div className="button-row centre">
-        <button className="btn secondary" onClick={newTime}>
-          🎲 New Time
-        </button>
-
-        <button
-          className="btn primary"
-          onClick={() => {
-            setShow(true);
-            speak(timeSentence);
-            earn(`clock-${hour}-${minute}`, 5);
-          }}
-        >
-          🔊 Reveal in Spanish
-        </button>
-      </div>
-
-      {show && <div className="feedback big-feedback">✨ {timeSentence}</div>}
-    </div>
-  );
-}
-
-export default function Page() {
-  const [profile, setProfile] = useState<Profile>(INITIAL_PROFILE);
-  const [xp, setXp] = useState(0);
-  const [awarded, setAwarded] = useState<string[]>([]);
-  const [completed, setCompleted] = useState<string[]>([]);
+export default function Home() {
+  const [screen, setScreen] = useState<Screen>("garage");
+  const [players, setPlayers] = useState<Racer[]>(INITIAL);
+  const [active, setActive] = useState(0);
   const [ready, setReady] = useState(false);
 
-  const [placeId, setPlaceId] = useState<string | null>(null);
-  const [selectedWord, setSelectedWord] = useState(0);
+  const [choice, setChoice] = useState<number | null>(null);
+  const [spoken, setSpoken] = useState(false);
+  const [feedback, setFeedback] = useState("");
 
-  const [quiz, setQuiz] = useState(false);
-  const [questions, setQuestions] = useState<{ word: Word; options: string[] }[]>([]);
-  const [questionNumber, setQuestionNumber] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-  const [correctAnswers, setCorrectAnswers] = useState(0);
-  const [quizFinished, setQuizFinished] = useState(false);
+  const [hud, setHud] = useState({
+    score: 0,
+    hearts: 3,
+    nitro: 100,
+    combo: 0,
+  });
 
-  const [toast, setToast] = useState("");
-  const [xpBump, setXpBump] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const worldRef = useRef<GameWorld>(newWorld());
+  const imagesRef = useRef<HTMLImageElement[]>([]);
+  const screenRef = useRef<Screen>("garage");
+  const lockRef = useRef(false);
 
-  const awardedRef = useRef<string[]>([]);
-  const xpRef = useRef(0);
-  const completedRef = useRef<string[]>([]);
+  const racer = players[active];
+  const question = MISSIONS[Math.min(racer.level, 5)];
 
+  // Load saved progress.
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(STORAGE);
+      const saved = JSON.parse(
+        localStorage.getItem(STORAGE_KEY) || "null"
+      );
 
-      if (stored) {
-        const data = JSON.parse(stored);
-
-        const savedXp = typeof data.xp === "number" ? data.xp : 0;
-        const savedAwarded = Array.isArray(data.awarded) ? data.awarded : [];
-        const savedCompleted = Array.isArray(data.completed) ? data.completed : [];
-
-        setXp(savedXp);
-        setAwarded(savedAwarded);
-        setCompleted(savedCompleted);
-        setProfile({ ...INITIAL_PROFILE, ...(data.profile || {}) });
-
-        xpRef.current = savedXp;
-        awardedRef.current = savedAwarded;
-        completedRef.current = savedCompleted;
+      if (Array.isArray(saved?.players) && saved.players.length === 2) {
+        setPlayers(saved.players);
       }
-    } catch {
-      // Start fresh if the browser contains invalid saved data.
-    }
+    } catch {}
 
     setReady(true);
   }, []);
@@ -757,1739 +589,812 @@ export default function Page() {
   useEffect(() => {
     if (!ready) return;
 
-    localStorage.setItem(
-      STORAGE,
-      JSON.stringify({
-        profile,
-        xp,
-        awarded,
-        completed,
-      })
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ players }));
+    } catch {}
+  }, [players, ready]);
+
+  // Preload car photos once.
+  useEffect(() => {
+    imagesRef.current = CARS.map((car) => {
+      const image = new window.Image();
+      image.src = car.image;
+      return image;
+    });
+  }, []);
+
+  useEffect(() => {
+    screenRef.current = screen;
+  }, [screen]);
+
+  function changePlayer(update: Partial<Racer>) {
+    setPlayers((old) =>
+      old.map((p, i) =>
+        i === active ? { ...p, ...update } : p
+      )
     );
-  }, [ready, profile, xp, awarded, completed]);
+  }
 
+  function move(direction: number) {
+    if (screenRef.current !== "race") return;
+
+    const world = worldRef.current;
+    world.lane = Math.max(0, Math.min(2, world.lane + direction));
+  }
+
+  function nitro() {
+    if (screenRef.current !== "race") return;
+
+    const world = worldRef.current;
+
+    if (world.nitro < 30 || world.boost > 0) return;
+
+    world.nitro -= 30;
+    world.boost = 2.2;
+  }
+
+  // Keyboard controls.
   useEffect(() => {
-    if (!toast) return;
+    function key(event: KeyboardEvent) {
+      if (screenRef.current !== "race") return;
 
-    const timer = window.setTimeout(() => setToast(""), 2500);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
+      if (
+        ["ArrowLeft", "ArrowRight", "ArrowUp", " "].includes(event.key)
+      ) {
+        event.preventDefault();
+      }
 
-  useEffect(() => {
-    if (!xpBump) return;
+      if (event.repeat) return;
 
-    const timer = window.setTimeout(() => setXpBump(false), 600);
-    return () => window.clearTimeout(timer);
-  }, [xpBump]);
-
-  function earn(key: string, points: number) {
-    if (!ready) return;
-
-    if (awardedRef.current.includes(key)) {
-      setToast("⭐ You have already earned these points!");
-      return;
+      if (event.key === "ArrowLeft") move(-1);
+      if (event.key === "ArrowRight") move(1);
+      if (event.key === "ArrowUp" || event.key === " ") nitro();
     }
 
-    const nextAwarded = [...awardedRef.current, key];
-    const nextXp = xpRef.current + points;
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, []);
 
-    awardedRef.current = nextAwarded;
-    xpRef.current = nextXp;
+  // Smooth racing loop: canvas redraws at approximately 30 FPS.
+  useEffect(() => {
+    if (screen !== "race") return;
 
-    setAwarded(nextAwarded);
-    setXp(nextXp);
-    setXpBump(true);
-    setToast(`✨ +${points} XP! ¡Excelente!`);
-  }
+    const ctx = canvasRef.current?.getContext("2d");
+    if (!ctx) return;
 
-  function finishPlace(id: string) {
-    if (completedRef.current.includes(id)) return;
+    let frame = 0;
+    let last = 0;
+    let lastHud = 0;
+    let running = true;
 
-    const next = [...completedRef.current, id];
-    completedRef.current = next;
-    setCompleted(next);
-  }
+    function loop(now: number) {
+      if (!running || !ctx) return;
 
-  function openPlace(id: string) {
-    setPlaceId(id);
-    setSelectedWord(0);
-    setQuiz(false);
-    setQuizFinished(false);
-    setToast("");
+      frame = requestAnimationFrame(loop);
 
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
+      if (now - last < 33) return;
 
-  function goHome() {
-    setPlaceId(null);
-    setQuiz(false);
-    setQuizFinished(false);
+      const dt = last
+        ? Math.min(0.05, (now - last) / 1000)
+        : 0;
 
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
+      last = now;
 
-  const currentPlace = PLACES.find((place) => place.id === placeId);
+      const world = worldRef.current;
 
-  function startQuiz(place: Place) {
-    const chosen = shuffle(place.words).slice(0, Math.min(5, place.words.length));
+      world.time += dt;
+      world.boost = Math.max(0, world.boost - dt);
+      world.safe = Math.max(0, world.safe - dt);
 
-    const quizQuestions = chosen.map((word) => {
-      const wrong = shuffle(
-        place.words.filter((other) => other.spanish !== word.spanish)
-      ).slice(0, 3);
+      const speed = world.boost > 0 ? 1.8 : 1;
 
-      return {
-        word,
-        options: shuffle([word.english, ...wrong.map((item) => item.english)]),
-      };
+      world.road =
+        (world.road + dt * 0.62 * speed) % 1;
+
+      world.visualLane +=
+        (world.lane - world.visualLane) *
+        Math.min(1, dt * 13);
+
+      // Traffic and collectibles.
+      world.spawn += dt;
+
+      if (world.spawn >= 1.35) {
+        world.spawn = 0;
+
+        world.objects.push({
+          id: world.nextId++,
+          lane: Math.floor(Math.random() * 3),
+          z: 0,
+          kind: Math.random() < 0.32 ? "star" : "rival",
+          car: Math.floor(Math.random() * CARS.length),
+          passed: false,
+        });
+      }
+
+      for (const item of world.objects) {
+        const before = item.z;
+        item.z += dt * 0.52 * speed;
+
+        if (before < 0.82 && item.z >= 0.82) {
+          if (item.lane === world.lane) {
+            if (item.kind === "star") {
+              world.score += 50;
+              world.nitro = Math.min(100, world.nitro + 20);
+              world.combo++;
+            } else if (world.safe <= 0) {
+              world.hearts = Math.max(0, world.hearts - 1);
+              world.safe = 1.2;
+              world.combo = 0;
+            }
+
+            item.z = 2;
+          } else if (item.kind === "rival" && !item.passed) {
+            // Reward dodging rival cars.
+            world.score += 15;
+            world.combo++;
+            item.passed = true;
+          }
+        }
+      }
+
+      world.objects = world.objects.filter(
+        (item) => item.z < 1.12
+      );
+
+      drawScene(ctx, world, imagesRef.current, racer);
+
+      if (now - lastHud > 300) {
+        lastHud = now;
+
+        setHud({
+          score: world.score,
+          hearts: world.hearts,
+          nitro: Math.round(world.nitro),
+          combo: world.combo,
+        });
+      }
+
+      // Every round ends in a mandatory Spanish challenge.
+      if (world.time >= RACE_LENGTH || world.hearts <= 0) {
+        running = false;
+        cancelAnimationFrame(frame);
+
+        setChoice(null);
+        setSpoken(false);
+        setFeedback("");
+        setScreen("question");
+
+        speak(question.spanish);
+      }
+    }
+
+    frame = requestAnimationFrame(loop);
+
+    return () => {
+      running = false;
+      cancelAnimationFrame(frame);
+    };
+  }, [screen, active, racer.car, racer.level, question.spanish]);
+
+  function startRace() {
+    worldRef.current = newWorld();
+
+    setHud({
+      score: 0,
+      hearts: 3,
+      nitro: 100,
+      combo: 0,
     });
 
-    setQuestions(quizQuestions);
-    setQuestionNumber(0);
-    setSelectedAnswer(null);
-    setCorrectAnswers(0);
-    setQuizFinished(false);
-    setQuiz(true);
+    setChoice(null);
+    setSpoken(false);
+    setFeedback("");
+
+    setScreen("race");
   }
 
-  function answerQuestion(option: string) {
-    if (selectedAnswer !== null) return;
+  function approveAnswer() {
+    if (lockRef.current) return;
+    if (choice !== question.correct || !spoken) return;
 
-    setSelectedAnswer(option);
+    lockRef.current = true;
 
-    if (option === questions[questionNumber].word.english) {
-      setCorrectAnswers((previous) => previous + 1);
+    const updated = players.map((p, index) =>
+      index === active
+        ? {
+            ...p,
+            level: Math.min(6, p.level + 1),
+            xp: p.xp + 100 + worldRef.current.score,
+          }
+        : p
+    );
 
-      if (currentPlace) {
-        earn(`${currentPlace.id}-quiz-${questionNumber}`, 10);
-      }
+    setPlayers(updated);
+
+    speak("¡Excelente! ¡Muy bien!");
+
+    if (updated.every((p) => p.level >= 6)) {
+      setScreen("finish");
+    } else {
+      const other = active === 0 ? 1 : 0;
+      setActive(
+        updated[other].level < 6 ? other : active
+      );
+      setScreen("garage");
     }
+
+    lockRef.current = false;
   }
 
-  function nextQuestion() {
-    if (questionNumber + 1 >= questions.length) {
-      setQuizFinished(true);
-
-      if (currentPlace) {
-        finishPlace(currentPlace.id);
-        earn(`${currentPlace.id}-quiz-complete`, 30);
-      }
-
-      return;
-    }
-
-    setQuestionNumber((previous) => previous + 1);
-    setSelectedAnswer(null);
+  function resetGame() {
+    setPlayers(INITIAL);
+    setActive(0);
+    setScreen("garage");
+    setChoice(null);
+    setSpoken(false);
+    setFeedback("");
   }
-
-  const level = Math.floor(xp / 150) + 1;
-  const levelProgress = Math.round(((xp % 150) / 150) * 100);
 
   return (
-    <div className="spanish-app">
-      <style>{STYLES}</style>
+    <main className="turbo-game">
+      <style suppressHydrationWarning>{CSS}</style>
 
       <header className="topbar">
-        <button className="logo" onClick={goHome}>
-          <span>🌎</span>
-          <span>
-            <strong>KW Translations</strong>
-            <small>SPANISH EXPLORERS</small>
-          </span>
-        </button>
-
-        <div className="scoreboard">
-          <span>🏅 Level {level}</span>
-          <span className={xpBump ? "xp-score xp-pop" : "xp-score"}>
-            ⭐ {xp} XP
-          </span>
-          <span>🏆 {completed.length}/{PLACES.length}</span>
-        </div>
+        <strong>🏁 KW TURBO RACERS</strong>
+        <span>
+          ⭐ {players[0].xp + players[1].xp} TEAM XP
+        </span>
       </header>
 
-      {toast && <div className="xp-toast" role="status">{toast}</div>}
+      {screen === "garage" && (
+        <section className="garage">
+          <div className="hero">
+            <small>THE SPANISH GRAND PRIX</small>
+            <h1>CHOOSE YOUR RIDE!</h1>
+            <p>REAL CARS · TURBO · SPANISH CHALLENGES</p>
+          </div>
 
-      {!currentPlace ? (
-        <>
-          <section className="hero">
-            <WorldArt />
-
-            <div className="hero-overlay">
-              <span className="hero-tag">WELCOME TO A MAGICAL WORLD OF SPANISH</span>
-
-              <h1>
-                Your Spanish
-                <br />
-                Adventure
-                <br />
-                Starts Here!
-              </h1>
-
-              <p>
-                Explore wonderful places, meet new friends, speak Spanish,
-                complete missions and collect stars!
-              </p>
-
+          <div className="player-tabs">
+            {players.map((p, i) => (
               <button
-                className="btn sunshine"
-                onClick={() => document.getElementById("world-map")?.scrollIntoView({ behavior: "smooth" })}
+                key={i}
+                className={active === i ? "active" : ""}
+                onClick={() => setActive(i)}
               >
-                🚀 Start Exploring!
+                🏎️ {p.name}
+                <small>GATE {Math.min(6, p.level + 1)}/6</small>
               </button>
-            </div>
+            ))}
+          </div>
 
-            <div className="floating-character">🧒🏽</div>
-          </section>
+          <div className="player-info">
+            <label>
+              DRIVER NAME
+              <input
+                maxLength={20}
+                value={racer.name}
+                onChange={(e) =>
+                  changePlayer({ name: e.target.value })
+                }
+              />
+            </label>
 
-          <main className="content">
-            <section className="welcome-message">
-              <span>👋</span>
-              <div>
-                <h2>¡Hola, {profile.name || "explorador"}!</h2>
-                <p>
-                  Welcome, explorer! Every place has new words, fun activities
-                  and missions. Let's discover Spanish together.
-                </p>
-              </div>
-            </section>
-
-            <div className="section-heading">
-              <span>YOUR ADVENTURE MAP</span>
-              <h2>🌎 Explore the Spanish World</h2>
-              <p>Choose a destination to begin your adventure!</p>
-            </div>
-
-            <section className="world-map" id="world-map">
-              <WorldArt />
-
-              <div className="map-label">🧭 Tap a destination to travel!</div>
-
-              {PLACES.map((place, index) => {
-                const positions = [
-                  { left: "14%", top: "63%" },
-                  { left: "41%", top: "31%" },
-                  { left: "71%", top: "62%" },
-                  { left: "86%", top: "30%" },
-                  { left: "37%", top: "81%" },
-                  { left: "63%", top: "82%" },
-                ];
-
-                return (
-                  <button
-                    key={place.id}
-                    className="map-pin"
-                    style={{
-                      left: positions[index].left,
-                      top: positions[index].top,
-                      borderColor: place.color,
-                    }}
-                    onClick={() => openPlace(place.id)}
-                  >
-                    <span>{place.emoji}</span>
-                    <strong>{place.name}</strong>
-                    {completed.includes(place.id) && <i>⭐</i>}
-                  </button>
-                );
-              })}
-            </section>
-
-            <div className="section-heading">
-              <span>CHOOSE YOUR DESTINATION</span>
-              <h2>✨ Six Magical Places</h2>
-              <p>Each world has something special to teach you.</p>
-            </div>
-
-            <section className="destination-grid">
-              {PLACES.map((place) => (
-                <button
-                  className="destination"
-                  key={place.id}
-                  onClick={() => openPlace(place.id)}
-                >
-                  <div className="destination-art" style={{ background: place.color }}>
-                    <span>{place.emoji}</span>
-                    <i>✨</i>
-                  </div>
-
-                  <div className="destination-info">
-                    <h3>{place.name}</h3>
-                    <strong>{place.spanish}</strong>
-                    <p>{place.description}</p>
-                    <span>
-                      {completed.includes(place.id) ? "⭐ Mission completed" : "Explore this world →"}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </section>
-
-            <section className="progress-panel">
-              <span>🏆</span>
-              <div>
-                <h2>My Explorer Progress</h2>
-                <p>
-                  Level {level} · {xp} XP earned · {completed.length} worlds completed
-                </p>
-
-                <div className="progress-track">
-                  <div style={{ width: `${levelProgress}%` }} />
-                </div>
-
-                <small>{150 - (xp % 150)} XP until your next level</small>
-              </div>
-            </section>
-          </main>
-        </>
-      ) : (
-        <main className="content lesson-page">
-          <button className="back-button" onClick={goHome}>
-            ← Back to Adventure Map
-          </button>
-
-          <section className="lesson-hero">
-            <WorldArt />
-
-            <div className="lesson-caption">
-              <span>NOW EXPLORING</span>
-              <h1>{currentPlace.name}</h1>
-              <strong>{currentPlace.spanish}</strong>
-              <p>{currentPlace.description}</p>
-            </div>
-
-            <div className="lesson-icon">{currentPlace.emoji}</div>
-          </section>
-
-          {quiz ? (
-            quizFinished ? (
-              <section className="panel quiz-box">
-                <div className="quiz-picture">🏆</div>
-                <h2>¡Excelente, explorador!</h2>
-                <p>
-                  You got {correctAnswers} out of {questions.length} questions correct.
-                </p>
-
-                <p>Your mission has been recorded and your XP is saved!</p>
-
-                <div className="button-row centre">
-                  <button className="btn primary" onClick={() => startQuiz(currentPlace)}>
-                    🔄 Try Again
-                  </button>
-
-                  <button className="btn secondary" onClick={goHome}>
-                    🌎 Back to the World
-                  </button>
-                </div>
-              </section>
-            ) : (
-              <section className="panel quiz-box">
-                <div className="quiz-progress">
-                  <strong>🎯 Spanish Challenge</strong>
-                  <span>Question {questionNumber + 1} of {questions.length}</span>
-                </div>
-
-                <div className="quiz-picture">{questions[questionNumber].word.emoji}</div>
-
-                <h2>What does this Spanish word mean?</h2>
-
-                <button
-                  className="pronunciation"
-                  onClick={() => speak(questions[questionNumber].word.spanish)}
-                >
-                  🔊 {questions[questionNumber].word.spanish}
-                </button>
-
-                <div className="answer-grid">
-                  {questions[questionNumber].options.map((option) => {
-                    const correct = questions[questionNumber].word.english === option;
-
-                    const className =
-                      selectedAnswer === null
-                        ? ""
-                        : correct
-                        ? "correct"
-                        : selectedAnswer === option
-                        ? "incorrect"
-                        : "";
-
-                    return (
-                      <button
-                        className={className}
-                        key={option}
-                        disabled={selectedAnswer !== null}
-                        onClick={() => answerQuestion(option)}
-                      >
-                        {option}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {selectedAnswer !== null && (
-                  <div className="feedback">
-                    <h3>
-                      {selectedAnswer === questions[questionNumber].word.english
-                        ? "🎉 ¡Muy bien! Correct!"
-                        : "💜 Good try! Keep learning!"}
-                    </h3>
-
-                    <p>
-                      The correct answer is:{" "}
-                      <strong>{questions[questionNumber].word.english}</strong>
-                    </p>
-
-                    <button className="btn primary" onClick={nextQuestion}>
-                      {questionNumber + 1 === questions.length
-                        ? "🏆 Finish Mission"
-                        : "Next Question →"}
-                    </button>
-                  </div>
-                )}
-              </section>
-            )
-          ) : (
-            <>
-              <section className="guide panel">
-                <span>👩🏽‍🏫</span>
-                <div>
-                  <h3>¡Bienvenido a {currentPlace.spanish}!</h3>
-                  <p>
-                    Click on each picture, listen carefully and repeat the word.
-                    Then complete the Spanish challenge to earn stars.
-                  </p>
-                </div>
-                <button className="btn secondary" onClick={() => speak(`¡Bienvenido! Vamos a aprender español.`)}>
-                  🔊 Listen
-                </button>
-              </section>
-
-              {currentPlace.id === "village" && (
-                <IntroductionStudio profile={profile} onChange={setProfile} earn={earn} />
-              )}
-
-              <div className="section-heading">
-                <span>LOOK · LISTEN · REPEAT</span>
-                <h2>🎨 Discover Spanish Words</h2>
-                <p>Tap the pictures to hear Spanish spoken aloud.</p>
-              </div>
-
-              <div className="word-grid">
-                {currentPlace.words.map((word, index) => (
-                  <button
-                    className={selectedWord === index ? "word-card selected" : "word-card"}
-                    key={`${word.spanish}-${index}`}
-                    onClick={() => {
-                      setSelectedWord(index);
-                      speak(word.spanish);
-                      earn(`${currentPlace.id}-word-${index}`, 3);
-                    }}
-                  >
-                    <span>{word.emoji}</span>
-                    <strong>{word.spanish}</strong>
-                    <small>{word.english}</small>
-                    <i>🔊 Listen</i>
-                  </button>
+            <label>
+              AGE
+              <select
+                value={racer.age}
+                onChange={(e) =>
+                  changePlayer({ age: e.target.value })
+                }
+              >
+                {["7", "8", "9", "10", "11", "12"].map((age) => (
+                  <option key={age}>{age}</option>
                 ))}
-              </div>
+              </select>
+            </label>
 
-              <section className="spotlight">
-                <div className="spotlight-picture">
-                  {currentPlace.words[selectedWord].emoji}
+            <label>
+              COUNTRY
+              <input
+                value={racer.country}
+                onChange={(e) =>
+                  changePlayer({ country: e.target.value })
+                }
+              />
+            </label>
+          </div>
+
+          <div className="car-grid">
+            {CARS.map((car, i) => (
+              <button
+                key={car.name}
+                className={`car-card ${
+                  racer.car === i ? "selected" : ""
+                }`}
+                onClick={() => changePlayer({ car: i })}
+              >
+                <CarPhoto index={i} selected={racer.car === i} />
+                <div className="car-description">
+                  <small>{car.type}</small>
+                  <strong>{car.name}</strong>
                 </div>
+              </button>
+            ))}
+          </div>
 
-                <div>
-                  <span>YOUR SPANISH WORD</span>
-                  <h2>{currentPlace.words[selectedWord].spanish}</h2>
-                  <p>{currentPlace.words[selectedWord].english}</p>
-
-                  <button
-                    className="btn primary"
-                    onClick={() => speak(currentPlace.words[selectedWord].spanish)}
-                  >
-                    🔊 Listen and Repeat
-                  </button>
-                </div>
-              </section>
-
-              {currentPlace.id === "clock" && <ClockPractice earn={earn} />}
-
-              <section className="mission-panel">
-                <span>🚀</span>
-
-                <div>
-                  <small>YOUR NEXT MISSION</small>
-                  <h2>Ready for the Spanish Challenge?</h2>
-                  <p>
-                    Answer five questions and collect your mission star.
-                    Your earned XP stays saved when you return.
-                  </p>
-                </div>
-
-                <button className="btn sunshine" onClick={() => startQuiz(currentPlace)}>
-                  🎯 Start Challenge
-                </button>
-              </section>
-            </>
-          )}
-        </main>
+          <button className="primary" onClick={startRace}>
+            🚀 START MY RACE!
+          </button>
+        </section>
       )}
 
-      <footer>
-        <strong>🌎 KW Translations Spanish Explorers</strong>
-        <p>Learn Spanish. Explore the World. Shine Bright!</p>
-        <small>
-          Built for young Spanish explorers · Grade 3 ·
-          Progress saves in this browser
-        </small>
-      </footer>
-    </div>
+      {screen === "race" && (
+        <section className="race">
+          <div className="race-hud">
+            <span>🏎️ {racer.name}</span>
+            <span>❤️ {hud.hearts}</span>
+            <span>⭐ {hud.score}</span>
+            <span>⚡ {hud.nitro}%</span>
+            <span>🔥 COMBO {hud.combo}</span>
+          </div>
+
+          <canvas
+            ref={canvasRef}
+            width={960}
+            height={540}
+            className="race-canvas"
+            aria-label="Arcade racing game"
+          />
+
+          <div className="controls">
+            <button onClick={() => move(-1)}>◀ LEFT</button>
+            <button className="nitro" onClick={nitro}>
+              ⚡ TURBO!
+            </button>
+            <button onClick={() => move(1)}>RIGHT ▶</button>
+          </div>
+
+          <p className="control-help">
+            ← → STEER · SPACE / ↑ TURBO · DODGE CARS · GRAB STARS
+          </p>
+        </section>
+      )}
+
+      {screen === "question" && (
+        <section className="checkpoint">
+          <div className="checkpoint-title">
+            🚧 SPANISH CHECKPOINT! 🚧
+          </div>
+
+          <small>
+            DRIVER: {racer.name} · GATE {racer.level + 1}/6
+          </small>
+
+          <h1>{question.spanish}</h1>
+          <p>{question.english}</p>
+
+          <button
+            className="audio"
+            onClick={() => speak(question.spanish)}
+          >
+            🔊 HEAR THE QUESTION
+          </button>
+
+          <div className="choices">
+            {question.answers.map((item, i) => (
+              <button
+                key={item}
+                className={
+                  choice === i
+                    ? i === question.correct
+                      ? "correct"
+                      : "wrong"
+                    : ""
+                }
+                onClick={() => {
+                  setChoice(i);
+                  setSpoken(false);
+                  setFeedback(
+                    i === question.correct
+                      ? "⭐ CORRECT! SAY THE SENTENCE!"
+                      : "TRY AGAIN! ¡OTRA VEZ!"
+                  );
+                }}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+
+          {feedback && (
+            <div className="feedback">{feedback}</div>
+          )}
+
+          {choice === question.correct && (
+            <div className="speak-panel">
+              <span>🎤 SPEAK TO UNLOCK!</span>
+              <h2>{sentence(racer, racer.level)}</h2>
+
+              <button
+                onClick={() =>
+                  speak(sentence(racer, racer.level))
+                }
+              >
+                🔊 LISTEN
+              </button>
+
+              <button
+                className={spoken ? "approved" : ""}
+                onClick={() => setSpoken(true)}
+              >
+                {spoken
+                  ? "✅ TEACHER APPROVED"
+                  : "🎤 APPROVE SPOKEN ANSWER"}
+              </button>
+            </div>
+          )}
+
+          <button
+            className="primary"
+            disabled={choice !== question.correct || !spoken}
+            onClick={approveAnswer}
+          >
+            ⭐ UNLOCK NEXT RACE · +100 XP
+          </button>
+        </section>
+      )}
+
+      {screen === "finish" && (
+        <section className="finish">
+          <div className="trophy">🏆 🎉 🏁</div>
+          <h1>SPANISH CHAMPIONS!</h1>
+          <h2>¡FELICIDADES!</h2>
+
+          <div className="results">
+            {players.map((p, i) => (
+              <div className="result" key={i}>
+                <CarPhoto index={p.car} />
+
+                <h3>{p.name}</h3>
+                <strong>⭐ {p.xp} XP</strong>
+                <p>{fullIntro(p)}</p>
+
+                <button onClick={() => speak(fullIntro(p))}>
+                  🔊 HEAR MY INTRODUCTION
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <button className="primary" onClick={resetGame}>
+            🏁 NEW CHAMPIONSHIP
+          </button>
+        </section>
+      )}
+    </main>
   );
 }
 
-const STYLES = `
-* {
-  box-sizing: border-box;
+const CSS = `
+.turbo-game {
+  min-height:100vh;
+  background:#090e1b;
+  color:white;
+  font-family:Arial,Helvetica,sans-serif;
 }
-
-html {
-  scroll-behavior: smooth;
-}
-
-body {
-  margin: 0;
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-.spanish-app {
-  min-height: 100vh;
-  background: #f7f8ff;
-  color: #29324d;
-}
-
-.spanish-app button,
-.spanish-app input,
-.spanish-app select,
-.spanish-app textarea {
-  font: inherit;
-}
-
-.spanish-app button {
-  cursor: pointer;
-}
-
+.turbo-game * {box-sizing:border-box;}
+.turbo-game button,.turbo-game input,.turbo-game select {font:inherit;}
+.turbo-game button {cursor:pointer;}
+.turbo-game button:disabled {opacity:.4;cursor:not-allowed;}
 .topbar {
-  background: white;
-  padding: 16px 5%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  border-bottom: 1px solid #eee7fb;
-  position: relative;
-  z-index: 20;
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  padding:16px 24px;
+  background:#142039;
+  border-bottom:1px solid #354867;
 }
-
-.logo {
-  border: none;
-  background: none;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  text-align: left;
-  color: #583caf;
+.topbar strong {color:#ffe078;font-size:18px;}
+.topbar span {color:#83eaff;font-weight:900;}
+.garage {
+  max-width:1250px;
+  margin:auto;
+  padding:28px 20px 55px;
+  text-align:center;
 }
-
-.logo > span:first-child {
-  font-size: 40px;
+.hero small {
+  color:#8beaff;
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:3px;
 }
-
-.logo strong,
-.logo small {
-  display: block;
-}
-
-.logo strong {
-  font-size: 22px;
-}
-
-.logo small {
-  font-weight: 900;
-  font-size: 11px;
-  letter-spacing: 2px;
-  margin-top: 4px;
-}
-
-.scoreboard {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.scoreboard > span {
-  background: #f0eaff;
-  color: #654ab1;
-  padding: 12px 15px;
-  border-radius: 30px;
-  font-size: 14px;
-  font-weight: 900;
-}
-
-.scoreboard .xp-score {
-  background: #fff1be;
-  color: #967019;
-}
-
-.xp-pop {
-  animation: xp-pop .6s ease-out;
-}
-
-@keyframes xp-pop {
-  0% { transform: scale(1); }
-  35% { transform: scale(1.3) rotate(5deg); }
-  65% { transform: scale(.95); }
-  100% { transform: scale(1); }
-}
-
-.xp-toast {
-  position: fixed;
-  top: 88px;
-  right: 25px;
-  z-index: 100;
-  padding: 16px 22px;
-  background: #fff3c0;
-  color: #74520d;
-  border: 2px solid #ffdc74;
-  border-radius: 19px;
-  font-weight: 900;
-  box-shadow: 0 15px 35px #332c6740;
-  animation: toast-in .3s ease-out;
-}
-
-@keyframes toast-in {
-  from { opacity: 0; transform: translateY(-20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.btn {
-  border: none;
-  padding: 14px 23px;
-  border-radius: 15px;
-  font-weight: 900 !important;
-  font-size: 14px;
-  transition: transform .2s, box-shadow .2s;
-}
-
-.btn:hover:not(:disabled) {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 18px #41366a2d;
-}
-
-.btn:disabled {
-  opacity: .55;
-  cursor: not-allowed;
-}
-
-.btn.primary {
-  color: white;
-  background: linear-gradient(135deg, #7651d1, #a57be6);
-}
-
-.btn.secondary {
-  color: #694cb7;
-  background: #ede7ff;
-}
-
-.btn.sunshine {
-  color: #62410f;
-  background: linear-gradient(135deg, #ffe88b, #ffc65e);
-  box-shadow: 0 5px 0 #d99a36;
-}
-
-.button-row {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-top: 20px;
-}
-
-.button-row.centre {
-  justify-content: center;
-}
-
-.content {
-  max-width: 1200px;
-  margin: auto;
-  padding: 30px 25px 65px;
-}
-
-.hero {
-  height: 575px;
-  position: relative;
-  overflow: hidden;
-  background: #9fd7f5;
-}
-
-.hero::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, #2b376baf, #4c479845 65%, transparent);
-  pointer-events: none;
-}
-
-.world-scene {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  background: linear-gradient(
-    180deg,
-    #80b7f9 0%,
-    #b4e4fa 46%,
-    #d1f3ca 75%,
-    #7dd2a4 100%
-  );
-  perspective: 800px;
-}
-
-.sun {
-  position: absolute;
-  width: 95px;
-  height: 95px;
-  top: 12%;
-  right: 15%;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #fffddb, #ffe68e 70%, #ffcf63);
-  box-shadow: 0 0 65px 35px #fff0a58b;
-}
-
-.cloud {
-  position: absolute;
-  width: 165px;
-  height: 45px;
-  border-radius: 70px;
-  background: #ffffffdb;
-  box-shadow: 20px -17px 0 3px #ffffffdb, 65px -6px 0 4px #ffffffdb;
-  animation: cloud-float 9s ease-in-out infinite alternate;
-}
-
-.cloud-one { left: 15%; top: 19%; }
-.cloud-two { left: 54%; top: 12%; transform: scale(.7); animation-delay: -4s; }
-
-@keyframes cloud-float {
-  from { translate: -10px 0; }
-  to { translate: 25px 5px; }
-}
-
-.mountain {
-  position: absolute;
-  bottom: 30%;
-  width: 450px;
-  height: 390px;
-  clip-path: polygon(50% 0%, 100% 100%, 0 100%);
-  background: linear-gradient(115deg, #e7f8f5 0 46%, #9cb7ca 47% 100%);
-  filter: drop-shadow(15px 18px 10px #5e7a9144);
-}
-
-.mountain-one { left: 1%; }
-.mountain-two { left: 32%; bottom: 34%; transform: scale(1.2); }
-.mountain-three { left: 70%; bottom: 30%; transform: scale(.9); }
-
-.hill {
-  position: absolute;
-  left: -15%;
-  width: 135%;
-  height: 54%;
-  border-radius: 50% 50% 0 0;
-}
-
-.hill-back {
-  bottom: -15%;
-  background: linear-gradient(175deg, #a9efa1, #54bc87);
-  transform: rotate(-3deg);
-}
-
-.hill-front {
-  bottom: -34%;
-  background: linear-gradient(150deg, #94e6a5, #399e6e);
-  transform: rotate(5deg);
-}
-
-.world-path {
-  position: absolute;
-  width: 48%;
-  height: 65%;
-  bottom: -43%;
-  left: 25%;
-  background: linear-gradient(90deg, #d0ac77, #ffedba 45%, #f1cd90);
-  border-radius: 50% 50% 0 0;
-  transform: rotate(-15deg);
-  box-shadow: inset -30px 0 26px #a8815636;
-}
-
-.tree {
-  position: absolute;
-  bottom: 19%;
-  height: 210px;
-  width: 150px;
-  filter: drop-shadow(14px 17px 8px #26583d56);
-}
-
-.tree-one { left: 11%; }
-.tree-two { left: 79%; bottom: 17%; transform: scale(1.25); }
-.tree-three { left: 55%; bottom: 38%; transform: scale(.66); }
-
-.tree-trunk {
-  width: 27px;
-  height: 95px;
-  background: linear-gradient(90deg, #855531, #ba8a52, #674628);
-  position: absolute;
-  bottom: 0;
-  left: 62px;
-  border-radius: 12px;
-}
-
-.tree-top {
-  width: 145px;
-  height: 145px;
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 2;
-  border-radius: 48% 52% 44% 56%;
-  background: radial-gradient(circle at 28% 23%, #b2f797, #4fc77e 55%, #22865c);
-  box-shadow: inset -18px -19px 25px #18764b5e;
-  animation: tree-sway 4s ease-in-out infinite alternate;
-  transform-origin: bottom center;
-}
-
-@keyframes tree-sway {
-  to { transform: rotate(3deg); }
-}
-
-.building {
-  position: absolute;
-  height: 170px;
-  width: 170px;
-  filter: drop-shadow(14px 20px 8px #3f61564f);
-}
-
-.building-one { left: 26%; bottom: 23%; }
-.building-two { left: 61%; bottom: 33%; transform: scale(.85); }
-.building-three { left: 42%; bottom: 42%; transform: scale(.67); }
-
-.building-wall {
-  position: absolute;
-  bottom: 0;
-  left: 23px;
-  width: 125px;
-  height: 110px;
-  background: linear-gradient(110deg, #fff2d6 0 70%, #dbad8d 71%);
-  border-radius: 4px;
-  box-shadow: inset -15px 0 0 #d09b7780;
-  transform: skewY(-4deg);
-}
-
-.building-roof {
-  position: absolute;
-  top: 9px;
-  left: 6px;
-  width: 166px;
-  height: 88px;
-  background: linear-gradient(125deg, #ffb2a6 0 55%, #bd658f 56%);
-  clip-path: polygon(42% 0, 100% 57%, 83% 100%, 0 68%);
-  z-index: 3;
-  filter: drop-shadow(2px 7px 2px #874c5855);
-}
-
-.building-window {
-  position: absolute;
-  left: 22px;
-  top: 34px;
-  width: 30px;
-  height: 31px;
-  background: linear-gradient(145deg, #a8e5ff, #477aaa);
-  border: 5px solid #fff8ed;
-  box-shadow: 3px 4px 2px #493c5b3b;
-}
-
-.building-door {
-  position: absolute;
-  right: 23px;
-  bottom: 0;
-  height: 57px;
-  width: 35px;
-  background: linear-gradient(90deg, #a87bb6, #71569c);
-  border-radius: 15px 15px 0 0;
-}
-
-.world-flower,
-.world-bird {
-  position: absolute;
-  font-size: 42px;
-  filter: drop-shadow(6px 8px 4px #334d5666);
-}
-
-.flower-one { left: 8%; bottom: 8%; }
-.flower-two { left: 75%; bottom: 9%; }
-.flower-three { left: 92%; bottom: 23%; }
-.world-bird { right: 24%; top: 30%; animation: butterfly 5s ease-in-out infinite; }
-
-@keyframes butterfly {
-  50% { transform: translate(20px, -18px) rotate(8deg); }
-}
-
-.hero-overlay {
-  position: absolute;
-  z-index: 4;
-  left: 7%;
-  top: 16%;
-  color: white;
-  max-width: 600px;
-}
-
-.hero-tag {
-  display: inline-block;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 1.5px;
-  background: #ffffff2f;
-  padding: 12px 18px;
-  border: 1px solid #ffffff80;
-  border-radius: 25px;
-}
-
 .hero h1 {
-  font-size: clamp(43px, 5vw, 77px);
-  line-height: 1.04;
-  letter-spacing: -2px;
-  margin: 25px 0;
-  text-shadow: 0 5px 12px #172e6b5a;
-}
-
-.hero p {
-  font-size: 18px;
-  line-height: 1.7;
-  max-width: 420px;
-  margin-bottom: 28px;
-}
-
-.floating-character {
-  position: absolute;
-  right: 11%;
-  bottom: 12%;
-  z-index: 4;
-  font-size: 130px;
-  filter: drop-shadow(12px 18px 8px #273b5659);
-  animation: mascot-bob 3s ease-in-out infinite;
-}
-
-@keyframes mascot-bob {
-  50% { transform: translateY(-12px); }
-}
-
-.welcome-message {
-  display: flex;
-  gap: 20px;
-  align-items: center;
-  background: white;
-  border: 1px solid #eae6f5;
-  border-radius: 23px;
-  padding: 25px;
-  margin: 12px 0 48px;
-}
-
-.welcome-message > span { font-size: 60px; }
-.welcome-message h2 { margin: 0 0 8px; }
-.welcome-message p { color: #788098; line-height: 1.6; margin: 0; }
-
-.section-heading {
-  text-align: center;
-  margin: 48px 0 24px;
-}
-
-.section-heading > span {
-  color: #8762d0;
-  letter-spacing: 1.5px;
-  font-size: 11px;
-  font-weight: 900;
-}
-
-.section-heading h2 {
-  font-size: clamp(28px, 4vw, 38px);
-  margin: 10px 0;
-}
-
-.section-heading p {
-  color: #7b8399;
-  line-height: 1.6;
-}
-
-.world-map {
-  position: relative;
-  height: 570px;
-  overflow: hidden;
-  border-radius: 30px;
-  box-shadow: 0 18px 37px #34527722;
-}
-
-.map-label {
-  position: absolute;
-  top: 22px;
-  left: 22px;
-  padding: 12px 18px;
-  border-radius: 18px;
-  background: #fffffff0;
-  font-weight: 900;
-  color: #6647ae;
-  z-index: 5;
-}
-
-.map-pin {
-  position: absolute;
-  z-index: 6;
-  min-width: 120px;
-  transform: translate(-50%, -50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  border: 4px solid white;
-  border-radius: 20px;
-  background: #fffffff0;
-  color: #35415d;
-  padding: 11px;
-  gap: 6px;
-  box-shadow: 0 9px 0 #345d6460, 0 14px 20px #1e41574d;
-  transition: transform .2s;
-}
-
-.map-pin:hover {
-  transform: translate(-50%, -59%) scale(1.08);
-}
-
-.map-pin > span {
-  font-size: 43px;
-  filter: drop-shadow(5px 6px 4px #35456652);
-}
-
-.map-pin strong {
-  font-size: 12px;
-}
-
-.map-pin i {
-  position: absolute;
-  right: -7px;
-  top: -16px;
-  font-size: 24px;
-}
-
-.destination-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 19px;
-}
-
-.destination {
-  text-align: left;
-  border: 1px solid #e6e8f4;
-  border-radius: 24px;
-  overflow: hidden;
-  background: white;
-  padding: 0;
-  color: #29324d;
-  transition: transform .2s, box-shadow .2s;
-}
-
-.destination:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 15px 25px #34467525;
-}
-
-.destination-art {
-  display: grid;
-  place-items: center;
-  height: 160px;
-  position: relative;
-  box-shadow: inset 0 -22px 25px #ffffff8a;
-}
-
-.destination-art > span {
-  font-size: 92px;
-  filter: drop-shadow(10px 12px 6px #53637855);
-}
-
-.destination-art i {
-  position: absolute;
-  right: 20%;
-  top: 13%;
-  font-size: 27px;
-}
-
-.destination-info {
-  padding: 22px;
-}
-
-.destination-info h3 {
-  margin: 0 0 7px;
-  font-size: 21px;
-}
-
-.destination-info strong,
-.destination-info > span {
-  color: #7856be;
-}
-
-.destination-info p {
-  color: #848b9b;
-  line-height: 1.6;
-  margin: 13px 0 20px;
-}
-
-.destination-info > span {
-  font-size: 14px;
-  font-weight: 900;
-}
-
-.progress-panel {
-  display: flex;
-  align-items: center;
-  gap: 25px;
-  background: #eee8ff;
-  border-radius: 25px;
-  padding: 29px;
-  margin-top: 45px;
-}
-
-.progress-panel > span {
-  font-size: 64px;
-}
-
-.progress-panel > div {
-  flex: 1;
-}
-
-.progress-panel h2 { margin: 0; }
-.progress-panel p { color: #726b91; }
-
-.progress-track {
-  height: 15px;
-  background: #d3c5f5;
-  border-radius: 20px;
-  overflow: hidden;
-  margin: 13px 0;
-}
-
-.progress-track > div {
-  height: 100%;
-  background: linear-gradient(90deg, #ffc65b, #a276e5);
-  transition: width .6s;
-}
-
-.lesson-page {
-  padding-top: 26px;
-}
-
-.back-button {
-  background: none;
-  color: #7252be;
-  border: none;
-  font-weight: 900 !important;
-  margin-bottom: 19px;
-}
-
-.lesson-hero {
-  position: relative;
-  height: 380px;
-  overflow: hidden;
-  border-radius: 28px;
-  box-shadow: 0 15px 28px #365b7c2b;
-}
-
-.lesson-caption {
-  position: absolute;
-  left: 26px;
-  top: 25px;
-  z-index: 4;
-  background: #fffffff1;
-  padding: 25px;
-  border-radius: 24px;
-  max-width: 400px;
-}
-
-.lesson-caption > span {
-  font-size: 11px;
-  font-weight: 900;
-  color: #7852bf;
-  letter-spacing: 1px;
-}
-
-.lesson-caption h1 {
-  font-size: 38px;
-  margin: 9px 0;
-}
-
-.lesson-caption strong {
-  color: #8b61ce;
-}
-
-.lesson-caption p {
-  color: #727d92;
-}
-
-.lesson-icon {
-  position: absolute;
-  right: 15%;
-  bottom: 18%;
-  z-index: 3;
-  font-size: 118px;
-  filter: drop-shadow(12px 16px 9px #25465d66);
-}
-
-.panel {
-  background: white;
-  border: 1px solid #e8e7f3;
-  border-radius: 24px;
-  padding: 25px;
-  box-shadow: 0 5px 16px #3e4e8420;
-}
-
-.guide {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  margin-top: 24px;
-}
-
-.guide > span { font-size: 60px; }
-.guide > div { flex: 1; }
-.guide h3 { font-size: 21px; margin: 0 0 8px; }
-.guide p { color: #7b8398; line-height: 1.6; }
-
-.intro-studio {
-  margin: 45px 0;
-}
-
-.conversation {
-  background: white;
-  padding: 25px;
-  border: 1px solid #e9e7f6;
-  border-radius: 23px;
-  display: grid;
-  gap: 17px;
-}
-
-.conversation-line {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-.conversation-line.reply {
-  justify-content: flex-end;
-}
-
-.conversation-person {
-  font-size: 48px;
-}
-
-.conversation-line button {
-  background: #efeaff;
-  border: none;
-  border-radius: 18px;
-  padding: 18px;
-  color: #6446b0;
-  font-weight: 900;
-  text-align: left;
-  line-height: 1.6;
-}
-
-.conversation-line.reply button {
-  background: #ddf8e8;
-  color: #367a57;
-}
-
-.two-columns {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
-  margin: 22px 0;
-  align-items: start;
-}
-
-.panel h3 {
-  margin-top: 0;
-  font-size: 23px;
-}
-
-.panel > p {
-  color: #778198;
-  line-height: 1.65;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 15px;
-  margin: 23px 0;
-}
-
-.input-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.input-group > span {
-  color: #7050b1;
-  font-weight: 900;
-  font-size: 12px;
-}
-
-.input-group input,
-.input-group select,
-.panel textarea {
-  width: 100%;
-  min-width: 0;
-  border: 2px solid #e4dff4;
-  border-radius: 12px;
-  padding: 13px;
-  background: #faf9ff;
-  color: #34415b;
-  outline-color: #9371d9;
-}
-
-.panel textarea {
-  resize: vertical;
-  min-height: 230px;
-  line-height: 1.8;
-}
-
-.sentence {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: #f7f4ff;
-  border-radius: 15px;
-  padding: 13px 11px;
-  margin: 9px 0;
-}
-
-.sentence-number {
-  min-width: 27px;
-  height: 27px;
-  display: grid;
-  place-items: center;
-  background: #e5dbff;
-  color: #6d4cb8;
-  border-radius: 50%;
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.sentence strong {
-  flex: 1;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.sentence button {
-  border: none;
-  background: none;
-  font-size: 22px;
-}
-
-.helper {
-  font-size: 13px;
-  color: #8d8f9f !important;
-  line-height: 1.7;
-}
-
-.speaking-panel {
-  text-align: center;
-}
-
-.microphone-art {
-  font-size: 110px;
-  margin: 25px;
-  filter: drop-shadow(9px 10px 7px #57447a56);
-}
-
-.speaking-panel .button-row {
-  justify-content: center;
-}
-
+  font-size:clamp(36px,7vw,76px);
+  line-height:1.05;
+  margin:15px auto;
+}
+.hero p {color:#ffe078;font-weight:900;}
+.player-tabs {
+  display:flex;
+  justify-content:center;
+  flex-wrap:wrap;
+  gap:12px;
+  margin:25px auto;
+}
+.player-tabs button {
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  background:#263650;
+  color:white;
+  border:2px solid #4e6584;
+  border-radius:15px;
+  padding:15px 25px;
+  font-weight:900;
+}
+.player-tabs button.active {
+  background:#ffe078;
+  color:#241c11;
+  border-color:#ffe078;
+}
+.player-tabs small {font-size:10px;}
+.player-info {
+  display:grid;
+  grid-template-columns:2fr 1fr 2fr;
+  max-width:800px;
+  margin:20px auto;
+  gap:12px;
+  text-align:left;
+}
+.player-info label {
+  color:#ffe078;
+  font-size:12px;
+  font-weight:900;
+}
+.player-info input,.player-info select {
+  width:100%;
+  display:block;
+  background:#1d2e47;
+  color:white;
+  border:1px solid #5c7597;
+  border-radius:10px;
+  padding:13px;
+  margin-top:8px;
+}
+.car-grid {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:15px;
+  margin:30px auto;
+}
+.car-card {
+  background:#1c2940;
+  border:3px solid #374f70;
+  border-radius:18px;
+  overflow:hidden;
+  padding:0;
+  color:white;
+  text-align:left;
+  transition:transform .15s;
+}
+.car-card:hover {transform:translateY(-4px);}
+.car-card.selected {
+  border-color:#ffe078;
+  box-shadow:0 0 25px #ffe07825;
+}
+.car-photo {
+  position:relative;
+  height:175px;
+  background:#283b57;
+  overflow:hidden;
+}
+.car-photo img {
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+.photo-fallback {
+  display:grid;
+  place-items:center;
+  align-content:center;
+  gap:8px;
+  height:100%;
+  color:#ffffff;
+  font-size:45px;
+}
+.photo-fallback strong {font-size:13px;}
+.selected-tag {
+  position:absolute;
+  top:8px;
+  right:8px;
+  background:#ffe078;
+  color:#1d1c16;
+  border-radius:7px;
+  padding:8px;
+  font-size:10px;
+  font-weight:900;
+}
+.car-description {padding:16px;}
+.car-description small {
+  display:block;
+  color:#83eaff;
+  font-weight:900;
+  font-size:11px;
+}
+.car-description strong {
+  display:block;
+  font-size:18px;
+  margin-top:9px;
+}
+.primary {
+  background:linear-gradient(120deg,#ffed91,#ffbd41);
+  color:#211b0e;
+  border:0;
+  border-radius:15px;
+  padding:19px 30px;
+  font-size:18px!important;
+  font-weight:900!important;
+  margin:25px auto;
+  box-shadow:0 5px 0 #a4741e;
+}
+.race {max-width:1150px;margin:auto;}
+.race-hud {
+  background:#1a2a45;
+  padding:15px;
+  display:flex;
+  align-items:center;
+  justify-content:space-around;
+  gap:10px;
+  flex-wrap:wrap;
+  color:#ffe078;
+  font-weight:900;
+}
+.race-canvas {
+  display:block;
+  width:100%;
+  height:auto;
+  max-height:70vh;
+  background:#15253e;
+}
+.controls {
+  display:grid;
+  grid-template-columns:1fr 1.4fr 1fr;
+  gap:12px;
+  background:#14253e;
+  padding:15px;
+}
+.controls button {
+  background:#2f486c;
+  color:white;
+  border:2px solid #6784ac;
+  border-radius:15px;
+  min-height:80px;
+  font-size:18px;
+  font-weight:900;
+}
+.controls .nitro {
+  background:#ffe078;
+  color:#221c0f;
+}
+.control-help {
+  color:#b1c5dd;
+  text-align:center;
+  font-size:12px;
+  font-weight:900;
+  padding:15px;
+}
+.checkpoint {
+  max-width:810px;
+  margin:25px auto;
+  border:3px solid #ffe078;
+  background:linear-gradient(#273f6a,#121f35);
+  border-radius:25px;
+  padding:32px 20px;
+  text-align:center;
+}
+.checkpoint-title {
+  color:#ffe078;
+  font-size:clamp(23px,4vw,39px);
+  font-weight:900;
+  margin-bottom:20px;
+}
+.checkpoint>small {color:#8beaff;font-weight:900;}
+.checkpoint h1 {
+  font-size:clamp(28px,5vw,52px);
+  margin:20px 0 10px;
+}
+.checkpoint>p {color:#cbdcf0;font-size:20px;}
+.audio,.speak-panel button,.result button {
+  background:#506aab;
+  color:white;
+  border:0;
+  border-radius:12px;
+  padding:15px 21px;
+  font-weight:900;
+  margin:8px;
+}
+.choices {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:13px;
+  margin:27px 0;
+}
+.choices button {
+  min-height:110px;
+  border:2px solid #6884a9;
+  border-radius:14px;
+  background:#2e486c;
+  padding:14px;
+  color:white;
+  font-weight:900;
+}
+.choices button.correct {
+  background:#267d55;
+  border-color:#8dffc1;
+}
+.choices button.wrong {
+  background:#833849;
+  border-color:#ff92a1;
+}
 .feedback {
-  padding: 22px;
-  background: #e6f9ee;
-  color: #286c51;
-  border-radius: 19px;
-  margin: 23px 0;
-  line-height: 1.7;
-  font-weight: 700;
+  color:#ffe078;
+  font-weight:900;
+  padding:15px;
 }
-
-.question-garden {
-  background: linear-gradient(135deg, #fff0c5, #ffe3bd);
-  padding: 29px;
-  border-radius: 25px;
-  margin-top: 30px;
+.speak-panel {
+  background:#294361;
+  border-radius:20px;
+  padding:24px;
+  margin:20px 0;
 }
-
-.question-garden h3 {
-  font-size: 25px;
-  margin: 0 0 10px;
+.speak-panel span {color:#ffe078;font-weight:900;}
+.speak-panel h2 {
+  font-size:clamp(24px,4vw,36px);
 }
-
-.question-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 13px;
-  margin-top: 20px;
+.speak-panel button.approved {background:#20a36b;}
+.finish {
+  max-width:1000px;
+  margin:auto;
+  text-align:center;
+  padding:45px 20px;
 }
-
-.question-grid button {
-  background: #fffaf0;
-  border: 2px solid #e9d6a7;
-  text-align: left;
-  padding: 16px;
-  border-radius: 15px;
-  color: #664ba8;
+.trophy {font-size:60px;}
+.finish>h1 {
+  font-size:clamp(39px,7vw,75px);
+  color:#ffe078;
 }
-
-.question-grid strong,
-.question-grid small {
-  display: block;
-  line-height: 1.5;
+.finish>h2 {color:#88eaff;}
+.results {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:20px;
+  margin:30px auto;
 }
-
-.question-grid small {
-  color: #897c79;
-  margin-top: 8px;
+.result {
+  background:#1d2f48;
+  border:2px solid #4f6888;
+  border-radius:20px;
+  padding:20px;
 }
-
-.word-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+.result .car-photo {height:210px;border-radius:13px;}
+.result h3 {font-size:27px;}
+.result strong {color:#ffe078;font-size:24px;}
+.result p {font-size:18px;line-height:1.6;}
+@media(max-width:850px) {
+  .car-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
+  .player-info {grid-template-columns:1fr;}
 }
-
-.word-card {
-  border: 3px solid #e9e5f8;
-  background: white;
-  border-radius: 22px;
-  min-height: 213px;
-  padding: 15px 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  color: #34405a;
-  transition: transform .2s, box-shadow .2s;
-}
-
-.word-card:hover,
-.word-card.selected {
-  transform: translateY(-5px);
-  border-color: #a687e8;
-  box-shadow: 0 10px 22px #6f519629;
-}
-
-.word-card > span {
-  font-size: 68px;
-  filter: drop-shadow(7px 8px 5px #344f7755);
-}
-
-.word-card strong {
-  font-size: 16px;
-  text-align: center;
-}
-
-.word-card small {
-  color: #81889b;
-  text-align: center;
-}
-
-.word-card i {
-  font-style: normal;
-  background: #f0eaff;
-  color: #7152b8;
-  padding: 7px 13px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 900;
-}
-
-.spotlight {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 30px;
-  align-items: center;
-  background: linear-gradient(135deg, #eee5ff, #ffe6ed);
-  border-radius: 27px;
-  padding: 28px;
-  margin: 40px 0;
-}
-
-.spotlight-picture {
-  min-height: 230px;
-  display: grid;
-  place-items: center;
-  border-radius: 23px;
-  background: #ffffffad;
-  font-size: 145px;
-  filter: drop-shadow(8px 10px 6px #4c4b7a55);
-}
-
-.spotlight > div:last-child > span {
-  font-size: 12px;
-  font-weight: 900;
-  color: #7952be;
-}
-
-.spotlight h2 {
-  font-size: 38px;
-  margin: 14px 0;
-}
-
-.spotlight p {
-  color: #777187;
-  font-size: 20px;
-}
-
-.mission-panel {
-  display: flex;
-  align-items: center;
-  gap: 22px;
-  flex-wrap: wrap;
-  color: white;
-  padding: 30px;
-  background: linear-gradient(110deg, #6749b9, #9270d6);
-  border-radius: 26px;
-  margin: 45px 0;
-}
-
-.mission-panel > span { font-size: 63px; }
-.mission-panel > div { flex: 1 1 230px; }
-.mission-panel small { color: #ffe59c; font-weight: 900; }
-.mission-panel h2 { margin: 8px 0; }
-.mission-panel p { line-height: 1.7; margin: 0; }
-
-.quiz-box {
-  max-width: 850px;
-  margin: 35px auto 70px;
-  text-align: center;
-  padding: 38px;
-}
-
-.quiz-progress {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  color: #7851bb;
-}
-
-.quiz-picture {
-  font-size: 115px;
-  margin: 28px;
-  filter: drop-shadow(8px 10px 6px #53607355);
-}
-
-.quiz-box h2 {
-  font-size: 29px;
-  line-height: 1.5;
-}
-
-.pronunciation {
-  border: none;
-  background: #ede7ff;
-  color: #6047a2;
-  padding: 16px 25px;
-  border-radius: 18px;
-  font-size: 23px !important;
-  font-weight: 900 !important;
-}
-
-.answer-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-  margin-top: 30px;
-}
-
-.answer-grid button {
-  border: 2px solid #e1d9f6;
-  border-radius: 17px;
-  background: #faf8ff;
-  padding: 19px;
-  color: #35405b;
-  font-weight: 900;
-}
-
-.answer-grid button.correct {
-  background: #dcf8e5;
-  border-color: #59c791;
-}
-
-.answer-grid button.incorrect {
-  background: #ffe0e5;
-  border-color: #e78f9e;
-}
-
-.answer-grid button:disabled {
-  cursor: default;
-}
-
-.big-feedback {
-  font-size: 23px;
-}
-
-.clock-panel {
-  text-align: center;
-  margin: 35px 0;
-}
-
-.clock-face {
-  position: relative;
-  width: 270px;
-  height: 270px;
-  border-radius: 50%;
-  margin: 30px auto;
-  border: 14px solid #8060c8;
-  background: radial-gradient(circle at 35% 25%, white, #ede8fc);
-  box-shadow: 10px 15px 24px #51418849;
-}
-
-.clock-number {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  color: #634aa9;
-  font-size: 18px;
-  font-weight: 900;
-}
-
-.clock-hand {
-  position: absolute;
-  bottom: 50%;
-  left: calc(50% - 4px);
-  width: 8px;
-  border-radius: 10px;
-  transform-origin: center bottom;
-}
-
-.hour-hand {
-  height: 68px;
-  background: #6546a3;
-}
-
-.minute-hand {
-  height: 94px;
-  width: 5px;
-  left: calc(50% - 2.5px);
-  background: #e68aaa;
-}
-
-.clock-centre {
-  width: 19px;
-  height: 19px;
-  background: #ffd36e;
-  border-radius: 50%;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-footer {
-  background: white;
-  border-top: 1px solid #e7e6f2;
-  padding: 35px;
-  text-align: center;
-}
-
-footer strong { color: #6745b4; }
-footer p { color: #8060c4; font-weight: 700; }
-footer small { color: #8b90a1; line-height: 1.6; }
-
-@media (max-width: 900px) {
-  .destination-grid { grid-template-columns: repeat(2, 1fr); }
-  .word-grid { grid-template-columns: repeat(3, 1fr); }
-  .question-grid { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media (max-width: 650px) {
-  .topbar {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .scoreboard > span {
-    padding: 9px;
-    font-size: 11px;
-  }
-
-  .hero { height: 470px; }
-  .hero-overlay { top: 8%; left: 7%; right: 7%; }
-  .hero h1 { font-size: 45px; }
-  .hero p { font-size: 14px; max-width: 310px; }
-  .hero-tag { font-size: 9px; }
-  .floating-character { font-size: 75px; right: 5%; bottom: 7%; }
-
-  .world-map { height: 540px; }
-  .map-label { top: 10px; left: 10px; font-size: 11px; }
-
-  .map-pin {
-    min-width: 82px;
-    padding: 8px 4px;
-  }
-
-  .map-pin > span { font-size: 26px; }
-  .map-pin strong { font-size: 10px; }
-
-  .destination-grid,
-  .two-columns,
-  .spotlight {
-    grid-template-columns: 1fr;
-  }
-
-  .word-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-  .word-card { min-height: 190px; }
-  .word-card > span { font-size: 53px; }
-  .word-card strong { font-size: 13px; }
-
-  .form-grid { grid-template-columns: 1fr; }
-  .question-grid { grid-template-columns: 1fr 1fr; }
-  .answer-grid { grid-template-columns: 1fr; }
-
-  .lesson-hero { height: 340px; }
-  .lesson-caption { left: 12px; top: 12px; padding: 15px; }
-  .lesson-caption h1 { font-size: 26px; }
-  .lesson-icon { font-size: 75px; right: 8%; bottom: 9%; }
-
-  .guide { flex-wrap: wrap; }
-  .guide > span { font-size: 43px; }
-
-  .conversation-person { font-size: 31px; }
-  .conversation-line button { padding: 12px; font-size: 12px; }
-
-  .progress-panel {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .spotlight-picture {
-    min-height: 165px;
-    font-size: 98px;
-  }
-
-  .panel { padding: 19px; }
-  .content { padding-left: 15px; padding-right: 15px; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .spanish-app *,
-  .spanish-app *::before,
-  .spanish-app *::after {
-    animation: none !important;
-    transition: none !important;
-  }
+@media(max-width:550px) {
+  .car-grid {gap:9px;}
+  .car-photo {height:120px;}
+  .car-description {padding:10px;}
+  .car-description strong {font-size:14px;}
+  .choices,.results {grid-template-columns:1fr;}
+  .choices button {min-height:65px;}
+  .controls {gap:7px;padding:9px;}
+  .controls button {min-height:69px;font-size:13px;}
+  .checkpoint {margin:10px;padding:22px 12px;}
 }
 `;
